@@ -1,0 +1,211 @@
+<html lang="en">
+<head>
+<title>API - libpac Manual</title>
+<meta http-equiv="Content-Type" content="text/html">
+<meta name="description" content="libpac Manual">
+<meta name="generator" content="makeinfo 4.8">
+<link title="Top" rel="start" href="index.html#Top">
+<link rel="prev" href="Overview.html#Overview" title="Overview">
+<link rel="next" href="Bugs.html#Bugs" title="Bugs">
+<link href="http://www.gnu.org/software/texinfo/" rel="generator-home" title="Texinfo Homepage">
+<meta http-equiv="Content-Style-Type" content="text/css">
+<style type="text/css"><!--
+  pre.display { font-family:inherit }
+  pre.format  { font-family:inherit }
+  pre.smalldisplay { font-family:inherit; font-size:smaller }
+  pre.smallformat  { font-family:inherit; font-size:smaller }
+  pre.smallexample { font-size:smaller }
+  pre.smalllisp    { font-size:smaller }
+  span.sc    { font-variant:small-caps }
+  span.roman { font-family:serif; font-weight:normal; } 
+  span.sansserif { font-family:sans-serif; font-weight:normal; } 
+--></style>
+</head>
+<body>
+<div class="node">
+<p>
+<a name="API"></a>
+Next:&nbsp;<a rel="next" accesskey="n" href="Bugs.html#Bugs">Bugs</a>,
+Previous:&nbsp;<a rel="previous" accesskey="p" href="Overview.html#Overview">Overview</a>,
+Up:&nbsp;<a rel="up" accesskey="u" href="index.html#Top">Top</a>
+<hr>
+</div>
+
+<h2 class="chapter">2 API</h2>
+
+<p>#include &lt;pac.h&gt;
+
+<div class="defun">
+&mdash; Data type: <b>struct pac_module *</b><var><a name="index-struct-pac_005fmodule-_002a-1"></a></var><br>
+<blockquote><p>A pointer to an incomplete type that represents an open PAC module returned
+from a successful call to <code>pac_open</code>. 
+</p></blockquote></div>
+
+<div class="defun">
+&mdash; Function: int <b>pac_init</b> (<var>long rate, int bits, int channels</var>)<var>;<a name="index-pac_005finit-2"></a></var><br>
+<blockquote><p>Initialize libpac.  Call this function before calling anything other than
+<code>pac_test</code> or <code>pac_exit</code>.
+
+        <p>The arguments specify the format of the audio data that libpac will generate. 
+<var>rate</var> must be between <code>PAC_RATE_MIN</code> (currently 4000) and
+<code>PAC_RATE_MAX</code> (currently 48000), <var>bits</var> must be 8, 16, or 32 and
+<var>channels</var> must be 1 or 2.
+
+        <p>Return 0 on success or -1 on failure.  On failure, <code>errno</code> is set to
+<code>PAC_EALREADY</code> if the library is already initialized or <code>PAC_EINVAL</code>
+if an invalid argument was passed. 
+</p></blockquote></div>
+
+<div class="defun">
+&mdash; Function: void <b>pac_exit</b> (<var>void</var>)<var>;<a name="index-pac_005fexit-3"></a></var><br>
+<blockquote><p>Free all resources used by libpac.  This includes all modules opened by
+<code>pac_open</code> that has not been closed by <code>pac_close</code>.  You do not have
+to call <code>pac_init</code> before calling this function. 
+</p></blockquote></div>
+
+<div class="defun">
+&mdash; Function: int <b>pac_test</b> (<var>const char *filename</var>)<var>;<a name="index-pac_005ftest-4"></a></var><br>
+<blockquote><p>Return true if <var>filename</var> seems to be a PAC module.  Note that even if
+this function returns true there's no guarantee that <code>pac_open</code> will
+succeed.  However, if this function fails so will <code>pac_open</code>.
+
+        <p>On failure, <code>errno</code> is set to <code>PAC_EFORMAT</code> if the file is not a PAC
+module.  Otherwise it is set to some system specific error code.  See
+<code>pac_perror</code> and <code>pac_strerror</code>. 
+</p></blockquote></div>
+
+<div class="defun">
+&mdash; Function: struct pac_module * <b>pac_open</b> (<var>const char *filename</var>)<var>;<a name="index-pac_005fopen-5"></a></var><br>
+<blockquote><p>Open the PAC module pointed to by <var>filename</var>.  Return pointer to the open
+module on success or <code>NULL</code> on failure.  On failure, <code>errno</code> is set
+to <code>PAC_EFORMAT</code> if <var>filename</var> is not a valid PAC module.  Otherwise
+it is set to some system specific error code.
+
+        <p>If <code>pac_test</code> succeeded on <var>filename</var> but <code>pac_open</code> fails,
+try disabling <code>PAC_STRICT_FORMAT</code>.  See <code>pac_disable</code>. 
+</p></blockquote></div>
+
+<div class="defun">
+&mdash; Function: void <b>pac_close</b> (<var>struct pac_module *module</var>)<var>;<a name="index-pac_005fclose-6"></a></var><br>
+<blockquote><p>Close <var>module</var> and free all resources allocated to it.  <var>module</var> may
+be <code>NULL</code>. 
+</p></blockquote></div>
+
+<div class="defun">
+&mdash; Function: long <b>pac_read</b> (<var>struct pac_module *module, void *buffer, long size</var>)<var>;<a name="index-pac_005fread-7"></a></var><br>
+<blockquote><p>Read at most <var>size</var> bytes from <var>module</var> into <var>buffer</var>.  <var>size</var>
+is rounded down to the nearest multiple of the frame size.  The frame size is
+the number of bytes required to represent one sample on all channels (one
+sample frame).  8-bit samples are stored as <code>signed char</code> and range from
+-127 to 127 while 16-bit samples are stored as <code>short</code> and range from
+-32767 to 32767.  32-bit samples are stored as <code>long</code> and are read
+directly (no volume reduction or clipping performed) from the internal mixing
+buffer.
+
+        <p>To read N seconds worth of audio you need to read <code>N * rate * frame_size</code>
+bytes.  E.g., if you called <code>pac_init (44100, 16, 2);</code> the frame size
+is <code>sizeof (short) * 2</code> bytes.  N seconds worth of audio data is then
+<code>N * 44100 * sizeof (short) * 2</code> bytes.
+
+        <p>On success, the function returns the number of bytes read into <var>buffer</var>. 
+This may be 0 if <var>module</var> has reached the end or if <var>size</var> was less
+than the frame size.  It may be less than <var>size</var> if <var>size</var> was not a
+multiple of the frame size or <var>module</var> reached the end.  The function
+returns -1 on failure. 
+</p></blockquote></div>
+
+<div class="defun">
+&mdash; Function: long <b>pac_seek</b> (<var>struct pac_module *module, long offset, int whence</var>)<var>;<a name="index-pac_005fseek-8"></a></var><br>
+<blockquote><p>Seek <var>offset</var> frames into <var>module</var>.  The <var>whence</var> argument can be
+one of <code>SEEK_SET</code>, <code>SEEK_CUR</code>, or <code>SEEK_END</code>.  They have the
+same meaning as in the ISO C <code>fseek</code> function.
+
+        <p>Return the new position on success.  Return -1 on failure and set <code>errno</code>
+to <code>PAC_ENOTSUP</code> if <var>module</var> is not seekable or <code>PAC_EINVAL</code> if
+<var>offset</var> is out of range or <var>whence</var> is invalid.  On failure the
+current position is left unchanged. 
+</p></blockquote></div>
+
+<div class="defun">
+&mdash; Function: long <b>pac_tell</b> (<var>const struct pac_module *module</var>)<var>;<a name="index-pac_005ftell-9"></a></var><br>
+<blockquote><p>Return the current read position, in frames, for <var>module</var>. 
+</p></blockquote></div>
+
+<div class="defun">
+&mdash; Function: int <b>pac_eof</b> (<var>const struct pac_module *module</var>)<var>;<a name="index-pac_005feof-10"></a></var><br>
+<blockquote><p>Return true if <var>module</var> has reached the end.  This occur after reading
+the last sample frame. 
+</p></blockquote></div>
+
+<div class="defun">
+&mdash; Function: long <b>pac_length</b> (<var>const struct pac_module *module</var>)<var>;<a name="index-pac_005flength-11"></a></var><br>
+<blockquote><p>Return the total length, in frames, of <var>module</var>.  If the length cannot be
+determined or is too long, the function returns 0.  This also means that
+seeking is not available. 
+</p></blockquote></div>
+
+<div class="defun">
+&mdash; Function: const char * <b>pac_title</b> (<var>const struct pac_module *module</var>)<var>;<a name="index-pac_005ftitle-12"></a></var><br>
+<blockquote><p>Return a pointer to the <var>module</var> song title.  The length is at most
+<code>PAC_NAME_MAX</code> (currently 40), not including the null character. 
+</p></blockquote></div>
+
+<div class="defun">
+&mdash; Function: void <b>pac_enable</b> (<var>int flags</var>)<var>;<a name="index-pac_005fenable-13"></a></var><br>
+<blockquote><p>Enable libpac options.  These options affect how modules are loaded by
+<code>pac_open</code> and read by <code>pac_read</code>.  <var>flags</var> can be any
+combination of the following:
+
+          <dl>
+<dt>`<samp><span class="samp">PAC_GUS_EMULATION</span></samp>'<dd>Emulate Gravis UltraSound hardware volume ramping.  It only affects version
+1.4 PAC modules using the note-off effect (Cxy). 
+<br><dt>`<samp><span class="samp">PAC_ENDLESS_SONGS</span></samp>'<dd>Songs that do not explicitly stop will play forever.  <code>pac_length</code> always
+returns the length of the song as if this option was disabled.  This also
+means that <code>pac_tell</code> and <code>pac_seek</code> operate within this length. 
+When the song &ldquo;wraps&rdquo;, <code>pac_tell</code> will begin at 0 again. 
+<br><dt>`<samp><span class="samp">PAC_INTERPOLATION</span></samp>'<dd>Linear interpolation for slightly better sample-rate conversion. 
+<br><dt>`<samp><span class="samp">PAC_VOLUME_REDUCTION</span></samp>'<dd>Reduce the mixing volume to avoid excessive clipping.  This option is disabled
+when reading 32-bit data (see <code>pac_init</code> and <code>pac_read</code>). 
+<br><dt>`<samp><span class="samp">PAC_STRICT_FORMAT</span></samp>'<dd>Fail <code>pac_open</code> if non-critical errors are encountered such as missing
+sounds, channel settings, invalid loop points, etc.  Disable this option to
+allow reading these files.  They may or may not play correctly. 
+<br><dt>`<samp><span class="samp">PAC_NOSOUNDS</span></samp>'<dd>Enable this option to prevent <code>pac_open</code> from loading and allocating
+storage for the sounds.  You can still play the module but it will, ofcourse,
+be inaudible. 
+<br><dt>`<samp><span class="samp">PAC_MODE_DEFAULT</span></samp>'<dd>The default mode, set by <code>pac_init</code>, is
+(PAC_GUS_EMULATION|PAC_INTERPOLATION|PAC_STRICT_FORMAT|PAC_VOLUME_REDUCTION). 
+</dl>
+
+        <p>You can call <code>pac_enable (0xff)</code> to enable all options. 
+</p></blockquote></div>
+
+<div class="defun">
+&mdash; Function: int <b>pac_isenabled</b> (<var>int flags</var>)<var>;<a name="index-pac_005fisenabled-14"></a></var><br>
+<blockquote><p>Query libpac options.  Return true if one or more of the bits in <var>flags</var>
+is set.  See <code>pac_enable</code> for a description of the available options. 
+</p></blockquote></div>
+
+<div class="defun">
+&mdash; Function: void <b>pac_disable</b> (<var>int flags</var>)<var>;<a name="index-pac_005fdisable-15"></a></var><br>
+<blockquote><p>Disable libpac options.  See <code>pac_enable</code> for a description of the
+available options.
+
+        <p>You can call <code>pac_disable (0xff)</code> to disable all options. 
+</p></blockquote></div>
+
+<div class="defun">
+&mdash; Function: void <b>pac_perror</b> (<var>const char *string</var>)<var>;<a name="index-pac_005fperror-16"></a></var><br>
+<blockquote><p>Print <var>string</var> to <code>stderr</code> followed by a colon and a blank, then a
+string describing the last error encountered.  If <var>string</var> is <code>NULL</code>
+or <var>*string</var> is <code>'\0'</code> then only the error string is printed.  If
+<code>errno</code> is not a libpac error code, the function calls <code>perror</code>. 
+</p></blockquote></div>
+
+<div class="defun">
+&mdash; Function: const char * <b>pac_strerror</b> (<var>int errnum</var>)<var>;<a name="index-pac_005fstrerror-17"></a></var><br>
+<blockquote><p>Return pointer to string describing the error code passed in <var>errnum</var>.  If
+<var>errnum</var> is not a libpac error code, the function calls <code>strerror</code>. 
+</p></blockquote></div>
+
+   </body></html>
+
