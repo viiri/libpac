@@ -5,6 +5,3 @@ source directory and type `make'.
 Windows users will have to use the MinGW environment.  I've only
 tested the plugin on Windows XP using Winamp 5.2.  It may or may not
 work with other versions.
-
-The XMMS plugin is also available in NetBSD's pkgsrc/wip tree as
-xmms-pac.
