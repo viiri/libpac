@@ -1,4 +1,3 @@
-* Distribute precompiled binaries for XMMS and Winamp plugins?
 * Plugin for audacious?
 * Handle endianess (see libpac/src/load.c).
 * Volume ramping?
